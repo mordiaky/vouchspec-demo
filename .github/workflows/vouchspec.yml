@@ -1,0 +1,64 @@
+name: VouchSpec publisher evidence
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  inspect-and-attest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact publisher commit
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Generate exact-commit VouchSpec evidence
+        id: vouchspec
+        uses: mordiaky/vouchspec/distribution/github-action@4404b7a9a2d3dc45b621ea694d2ca7ad666b9898 # v0.2.0
+        with:
+          skill-path: skills/hello-vouchspec
+
+      - name: Attest the receipt draft to this workflow
+        id: attest-receipt
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+        with:
+          subject-path: ${{ steps.vouchspec.outputs.receipt-path }}
+
+      - name: Attest the workflow binding request
+        id: attest-request
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+        with:
+          subject-path: ${{ steps.vouchspec.outputs.ci-request-path }}
+
+      - name: Upload the exact evidence files
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vouchspec-publisher-evidence
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            ${{ steps.vouchspec.outputs.receipt-path }}
+            ${{ steps.vouchspec.outputs.ci-request-path }}
+
+      - name: Publish verification links
+        shell: bash
+        env:
+          RECEIPT_ATTESTATION_URL: ${{ steps.attest-receipt.outputs.attestation-url }}
+          REQUEST_ATTESTATION_URL: ${{ steps.attest-request.outputs.attestation-url }}
+        run: |
+          {
+            echo "## VouchSpec publisher evidence"
+            echo
+            echo "- Receipt-draft attestation: $RECEIPT_ATTESTATION_URL"
+            echo "- Workflow-binding attestation: $REQUEST_ATTESTATION_URL"
+            echo
+            echo "These attestations establish publisher workflow provenance."
+            echo "They are not a VouchSpec safety certification or issuer signature."
+          } >> "$GITHUB_STEP_SUMMARY"
