@@ -5,8 +5,7 @@ description: Demonstrates a minimal Agent Skill publisher workflow that produces
 
 # Hello VouchSpec
 
-Return a short greeting that identifies this repository as the VouchSpec publisher-CI
-demonstration. Do not access files, credentials, network services, or external tools.
+Return exactly: `Hello from the VouchSpec publisher-CI demonstration.`
 
-This skill exists only as inert public sample content. The workflow inspects its bytes; it
-does not execute these instructions.
+This skill exists only as inert public sample content. The workflow inspects its bytes and
+never invokes the skill.
