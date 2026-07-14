@@ -4,9 +4,10 @@
 
 This is the smallest complete publisher-side integration for
 [VouchSpec](https://github.com/mordiaky/vouchspec). It checks the exact repository commit,
-statically inspects one public Agent Skill without executing it, creates a receipt draft and
-workflow-binding request, attests both files with GitHub's OIDC-backed artifact attestation
-service, and uploads the files as a workflow artifact.
+statically inspects a passing and an intentionally structurally failing public Agent Skill
+without executing either, creates receipt drafts and workflow-binding requests, attests the
+files with GitHub's OIDC-backed artifact attestation service, and uploads them as workflow
+artifacts.
 
 Every third-party action is pinned to a full commit SHA. The sample workflow is in
 [`.github/workflows/vouchspec.yml`](.github/workflows/vouchspec.yml); adopters only need to
@@ -14,11 +15,11 @@ change `skill-path`.
 
 ## What the workflow produces
 
-- `receipt.json`: a deterministic VouchSpec receipt draft bound to the repository, full
+- Per matrix case, `receipt.json`: a deterministic VouchSpec receipt draft bound to the repository, full
   commit, skill path, and exact directory digest.
 - `publisher-ci-request.json`: the repository, workflow, run, action ref, commit, and
   receipt hash that VouchSpec can independently verify.
-- Two GitHub artifact attestations: publisher workflow provenance for those exact files.
+- Two GitHub artifact attestations per case: publisher workflow provenance for those exact files.
 
 The uploaded files remain available from the successful workflow run for 30 days. GitHub's
 attestation pages remain linked from the job summary.
@@ -38,7 +39,9 @@ lifecycle checks apply after VouchSpec issuer-signs an accepted receipt.
 
 ## Evidence boundary
 
-This workflow establishes exact-byte static-inspection and publisher-workflow provenance.
+The two cases prove that both a structural pass and an explicit structural failure remain
+attestable evidence; the workflow asserts each expected status. This workflow establishes
+exact-byte static-inspection and publisher-workflow provenance.
 It does not execute the skill, verify publisher identity, observe runtime behavior, prove
 compatibility, guarantee security, or certify safety. A structural failure is still a useful
 result when reported accurately.

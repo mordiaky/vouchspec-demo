@@ -3,7 +3,6 @@ name: VouchSpec publisher evidence
 on:
   push:
     branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -15,15 +14,37 @@ permissions:
 jobs:
   inspect-and-attest:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - evidence-case: structural-pass
+            skill-path: skills/hello-vouchspec
+            expected-structure-status: pass
+          - evidence-case: structural-failure
+            skill-path: skills/structural-failure
+            expected-structure-status: fail
     steps:
       - name: Check out the exact publisher commit
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
+      - name: Select the hash-locked action runtime
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+
       - name: Generate exact-commit VouchSpec evidence
         id: vouchspec
-        uses: mordiaky/vouchspec/distribution/github-action@4404b7a9a2d3dc45b621ea694d2ca7ad666b9898 # v0.2.0
+        uses: mordiaky/vouchspec/distribution/github-action@ed812a19184d3fa388d854f71b72fb4aa78e2712 # immutable action snapshot
         with:
-          skill-path: skills/hello-vouchspec
+          skill-path: ${{ matrix.skill-path }}
+
+      - name: Confirm the expected evidence result
+        shell: bash
+        env:
+          ACTUAL_STRUCTURE_STATUS: ${{ steps.vouchspec.outputs.structure-status }}
+          EXPECTED_STRUCTURE_STATUS: ${{ matrix.expected-structure-status }}
+        run: test "$ACTUAL_STRUCTURE_STATUS" = "$EXPECTED_STRUCTURE_STATUS"
 
       - name: Attest the receipt draft to this workflow
         id: attest-receipt
@@ -40,7 +61,7 @@ jobs:
       - name: Upload the exact evidence files
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: vouchspec-publisher-evidence
+          name: vouchspec-publisher-evidence-${{ matrix.evidence-case }}
           if-no-files-found: error
           retention-days: 30
           path: |
@@ -50,12 +71,16 @@ jobs:
       - name: Publish verification links
         shell: bash
         env:
+          EVIDENCE_CASE: ${{ matrix.evidence-case }}
+          STRUCTURE_STATUS: ${{ steps.vouchspec.outputs.structure-status }}
           RECEIPT_ATTESTATION_URL: ${{ steps.attest-receipt.outputs.attestation-url }}
           REQUEST_ATTESTATION_URL: ${{ steps.attest-request.outputs.attestation-url }}
         run: |
           {
             echo "## VouchSpec publisher evidence"
             echo
+            echo "- Case: $EVIDENCE_CASE"
+            echo "- Structure status: $STRUCTURE_STATUS"
             echo "- Receipt-draft attestation: $RECEIPT_ATTESTATION_URL"
             echo "- Workflow-binding attestation: $REQUEST_ATTESTATION_URL"
             echo
